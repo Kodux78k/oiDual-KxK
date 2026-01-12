@@ -585,7 +585,98 @@ background-attachment: fixed;
       </div>
     </div>
   </div>
+  <!-- BEGIN: Dual Infodose Sync Patch -->
+  <script>
+  (function(){
+    function chatSyncOnStorage() {
+      try {
+        if (typeof apiKey !== 'undefined') {
+          const newKey = localStorage.getItem('di_apiKey') || '';
+          if (newKey && newKey !== apiKey) {
+            apiKey = newKey;
+            const keyEl = document.getElementById('apiKeyInput');
+            if (keyEl) keyEl.value = apiKey;
+          }
+        }
+        if (typeof modelName !== 'undefined') {
+          const newModel = localStorage.getItem('di_modelName') || '';
+          if (newModel && newModel !== modelName) {
+            modelName = newModel;
+            const mEl = document.getElementById('modelInput');
+            if (mEl) mEl.value = modelName;
+          }
+        }
+        if (typeof training !== 'undefined') {
+          const t = localStorage.getItem('di_trainingText');
+          if (t && training !== t) {
+            training = t;
+            const fname = localStorage.getItem('di_trainingFileName') || '';
+            const fEl = document.getElementById('trainingFileName');
+            if (fEl && fname) fEl.innerText = fname;
+          }
+        }
+        if (typeof userName !== 'undefined')
+          userName = localStorage.getItem('di_userName') || '';
 
+        if (typeof infodoseName !== 'undefined')
+          infodoseName = localStorage.getItem('di_infodoseName') || '';
+
+        const dispU = document.getElementById('displayUser');
+        const dispI = document.getElementById('displayInfodose');
+        if (dispU) dispU.innerText = 'User: ' + (userName || '—');
+        if (dispI) dispI.innerText = 'Infodose: ' + (infodoseName || '—');
+      } catch (e) { console.warn('[Dual Sync] chatSync error', e); }
+    }
+
+    function cardImportDiApiKey() {
+      try {
+        if (typeof STATE === 'undefined' || !Array.isArray(STATE.keys)) return;
+        const sk = localStorage.getItem('di_apiKey');
+        const model = localStorage.getItem('di_modelName') || '';
+        if (!sk) return;
+        let key = STATE.keys.find(k => k.token === sk);
+        if (!key) {
+          STATE.keys.forEach(k => k.active = false);
+          STATE.keys.unshift({
+            id: 'import-' + Date.now(),
+            name: 'Imported-SK',
+            token: sk,
+            model: model,
+            webhook: '',
+            active: true
+          });
+        } else {
+          STATE.keys.forEach(k => k.active = (k.token === sk));
+        }
+        if (typeof saveData === 'function') saveData();
+        if (typeof renderKeysList === 'function') renderKeysList();
+        if (typeof updateInterface === 'function') updateInterface(STATE.user);
+      } catch (e) { console.warn('[Dual Sync] cardImport error', e); }
+    }
+
+    try {
+      if (typeof window.setActiveKey === 'function') {
+        const original = window.setActiveKey.bind(window);
+        window.setActiveKey = function(id) {
+          original(id);
+          try {
+            const active = STATE?.keys?.find(k => k.active);
+            if (active?.token) {
+              localStorage.setItem('di_apiKey', active.token);
+              if (active.model) localStorage.setItem('di_modelName', active.model);
+            }
+          } catch(e){}
+        };
+      }
+    } catch(e){}
+
+    window.addEventListener('storage', (e) => {
+      const keys = ['di_apiKey','di_modelName','di_trainingText','di_trainingFileName','di_userName','di_infodoseName','di_assistantEnabled','di_trainingActive'];
+      if (keys.includes(e.key)) { chatSyncOnStorage(); cardImportDiApiKey(); }
+    });
+    setTimeout(() => { chatSyncOnStorage(); cardImportDiApiKey(); }, 80);
+  })();
+  </script>
   <!-- Scripts: Chat (with Render Z enhancements) -->
   <script>
     /* ---------- Constantes iniciais (Chat module - globals intentionally) ---------- */
@@ -1204,98 +1295,7 @@ background-attachment: fixed;
       }
     });
   </script>
-  <!-- BEGIN: Dual Infodose Sync Patch -->
-  <script>
-  (function(){
-    function chatSyncOnStorage() {
-      try {
-        if (typeof apiKey !== 'undefined') {
-          const newKey = localStorage.getItem('di_apiKey') || '';
-          if (newKey && newKey !== apiKey) {
-            apiKey = newKey;
-            const keyEl = document.getElementById('apiKeyInput');
-            if (keyEl) keyEl.value = apiKey;
-          }
-        }
-        if (typeof modelName !== 'undefined') {
-          const newModel = localStorage.getItem('di_modelName') || '';
-          if (newModel && newModel !== modelName) {
-            modelName = newModel;
-            const mEl = document.getElementById('modelInput');
-            if (mEl) mEl.value = modelName;
-          }
-        }
-        if (typeof training !== 'undefined') {
-          const t = localStorage.getItem('di_trainingText');
-          if (t && training !== t) {
-            training = t;
-            const fname = localStorage.getItem('di_trainingFileName') || '';
-            const fEl = document.getElementById('trainingFileName');
-            if (fEl && fname) fEl.innerText = fname;
-          }
-        }
-        if (typeof userName !== 'undefined')
-          userName = localStorage.getItem('di_userName') || '';
 
-        if (typeof infodoseName !== 'undefined')
-          infodoseName = localStorage.getItem('di_infodoseName') || '';
-
-        const dispU = document.getElementById('displayUser');
-        const dispI = document.getElementById('displayInfodose');
-        if (dispU) dispU.innerText = 'User: ' + (userName || '—');
-        if (dispI) dispI.innerText = 'Infodose: ' + (infodoseName || '—');
-      } catch (e) { console.warn('[Dual Sync] chatSync error', e); }
-    }
-
-    function cardImportDiApiKey() {
-      try {
-        if (typeof STATE === 'undefined' || !Array.isArray(STATE.keys)) return;
-        const sk = localStorage.getItem('di_apiKey');
-        const model = localStorage.getItem('di_modelName') || '';
-        if (!sk) return;
-        let key = STATE.keys.find(k => k.token === sk);
-        if (!key) {
-          STATE.keys.forEach(k => k.active = false);
-          STATE.keys.unshift({
-            id: 'import-' + Date.now(),
-            name: 'Imported-SK',
-            token: sk,
-            model: model,
-            webhook: '',
-            active: true
-          });
-        } else {
-          STATE.keys.forEach(k => k.active = (k.token === sk));
-        }
-        if (typeof saveData === 'function') saveData();
-        if (typeof renderKeysList === 'function') renderKeysList();
-        if (typeof updateInterface === 'function') updateInterface(STATE.user);
-      } catch (e) { console.warn('[Dual Sync] cardImport error', e); }
-    }
-
-    try {
-      if (typeof window.setActiveKey === 'function') {
-        const original = window.setActiveKey.bind(window);
-        window.setActiveKey = function(id) {
-          original(id);
-          try {
-            const active = STATE?.keys?.find(k => k.active);
-            if (active?.token) {
-              localStorage.setItem('di_apiKey', active.token);
-              if (active.model) localStorage.setItem('di_modelName', active.model);
-            }
-          } catch(e){}
-        };
-      }
-    } catch(e){}
-
-    window.addEventListener('storage', (e) => {
-      const keys = ['di_apiKey','di_modelName','di_trainingText','di_trainingFileName','di_userName','di_infodoseName','di_assistantEnabled','di_trainingActive'];
-      if (keys.includes(e.key)) { chatSyncOnStorage(); cardImportDiApiKey(); }
-    });
-    setTimeout(() => { chatSyncOnStorage(); cardImportDiApiKey(); }, 80);
-  })();
-  </script>
   <!-- END: Dual Infodose Sync Patch -->
   <!-- Scripts: Fusion HUD (keeps functions needed by sync patch) -->
   <script>
